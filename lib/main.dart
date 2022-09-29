@@ -7,109 +7,240 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'MonthSelector',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const Content(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class Content extends StatelessWidget {
+  const Content({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('MonthSelector'),
+      ),
+      body: Center(
+        child: ElevatedButton(
+          child: const Text('show'),
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                content: SizedBox(
+                  height: 330,
+                  width: 300,
+                  child: MonthSelector(
+                    startDate: DateTime(2019, 4),
+                    endDate: DateTime(2022, 10),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class MonthSelector extends StatefulWidget {
+  const MonthSelector({
+    super.key,
+    required this.startDate,
+    required this.endDate,
+  });
 
-  void _incrementCounter() {
+  final DateTime startDate;
+  final DateTime endDate;
+
+  @override
+  State<MonthSelector> createState() => _MonthSelectorState();
+}
+
+class _MonthSelectorState extends State<MonthSelector> {
+  late DateTime selectedDate;
+
+  List<DateTime> selectableMonthList = [];
+  List<List<DateTime>> monthList = [];
+  static final monthNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  late List<int> yearList;
+  int currentPageNumber = 0;
+
+  void incrementPageNumber() {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      currentPageNumber++;
+    });
+  }
+
+  void decrementPageNumber() {
+    setState(() {
+      currentPageNumber--;
     });
   }
 
   @override
+  void initState() {
+    super.initState();
+    selectedDate = DateTime(2020, 1);
+    var month = widget.startDate;
+    while (!selectableMonthList.contains(widget.endDate)) {
+      selectableMonthList.add(month);
+      month = DateTime(month.year, month.month + 1, month.day);
+    }
+    yearList = selectableMonthList
+        .map((month) => month.year)
+        .toList()
+        .toSet()
+        .toList();
+    monthList = yearList
+        .map((year) =>
+            monthNumbers.map((month) => DateTime(year, month, 1)).toList())
+        .toList();
+    final initialPageNumber = monthList.indexWhere(
+        (months) => months.any((month) => month.year == selectedDate.year));
+    currentPageNumber = initialPageNumber;
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        YearGridHeader(
+          year: monthList[currentPageNumber].first.year,
+          canBack: currentPageNumber > 0,
+          onPressedBackButton: decrementPageNumber,
+          canForward: currentPageNumber < monthList.length - 1,
+          onPressedForwardButton: incrementPageNumber,
+        ),
+        Expanded(
+          child: YearGridBody(
+            monthList: monthList[currentPageNumber],
+            selectedMonth: selectedDate,
+            onTapMonth: (date) {
+              setState(() {
+                selectedDate = date;
+                currentPageNumber = monthList.indexWhere(
+                    (months) => months.any((month) => month.year == date.year));
+              });
+            },
+            selectableMonthList: selectableMonthList,
+          ),
+        ),
+        Row(
+          children: [
+            const Spacer(),
+            TextButton(
+              child: const Text('TODAY'),
+              onPressed: () {
+                setState(() {
+                  currentPageNumber = monthList.indexWhere((months) =>
+                      months.any((month) => month.year == DateTime.now().year));
+                  selectedDate =
+                      DateTime(DateTime.now().year, DateTime.now().month, 1);
+                });
+              },
+            )
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ],
+    );
+  }
+}
+
+class YearGridHeader extends StatelessWidget {
+  const YearGridHeader({
+    super.key,
+    required this.year,
+    required this.canBack,
+    required this.onPressedBackButton,
+    required this.canForward,
+    required this.onPressedForwardButton,
+  });
+  final int year;
+  final void Function() onPressedBackButton;
+  final bool canBack;
+  final bool canForward;
+  final void Function() onPressedForwardButton;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(year.toString()),
+        const Spacer(),
+        IconButton(
+          icon: const Icon(Icons.keyboard_arrow_up),
+          onPressed: !canBack ? null : () => onPressedBackButton(),
+        ),
+        IconButton(
+          icon: const Icon(Icons.keyboard_arrow_down),
+          onPressed: !canForward ? null : () => onPressedForwardButton(),
+        ),
+      ],
+    );
+  }
+}
+
+class YearGridBody extends StatelessWidget {
+  const YearGridBody({
+    super.key,
+    required this.selectableMonthList,
+    required this.monthList,
+    required this.selectedMonth,
+    required this.onTapMonth,
+  });
+
+  final List<DateTime> selectableMonthList;
+  final List<DateTime> monthList;
+  final DateTime selectedMonth;
+  final void Function(DateTime) onTapMonth;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 4,
+      children: monthList
+          .map(
+            (month) => GestureDetector(
+              onTap: !selectableMonthList.contains(month)
+                  ? null
+                  : () => onTapMonth(month),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: selectedMonth == month
+                        ? Theme.of(context).primaryColor
+                        : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${month.month.toString()}月',
+                      style: selectableMonthList.contains(month)
+                          ? Theme.of(context).textTheme.bodyMedium
+                          : Theme.of(context)
+                              .textTheme
+                              .bodyMedium!
+                              .copyWith(color: Colors.grey),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }
